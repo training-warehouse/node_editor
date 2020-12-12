@@ -9,7 +9,7 @@ if __name__ == '__main__':
     app =QApplication([])
 
     window = NodeEditorWind()
-    window.init_ui()
+    window.show()
 
     app.exec_()
 
