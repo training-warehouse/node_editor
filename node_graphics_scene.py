@@ -31,6 +31,7 @@ class QDMGraphicsScene(QGraphicsScene):
         self.setBackgroundBrush(self._color_background)
 
     def drawBackground(self, painter, rect):
+        # 设置背景网格
         super(QDMGraphicsScene, self).drawBackground(painter, rect)
 
         left = int(math.floor(rect.left()))

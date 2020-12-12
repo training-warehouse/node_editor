@@ -29,6 +29,7 @@ class NodeEditorWind(QWidget):
         self.add_debug_content()
 
     def add_debug_content(self):
+        """绘制节点测试"""
         green_brush = QBrush(Qt.green)
         outline_pen = QPen(Qt.black)
         outline_pen.setWidth(2)

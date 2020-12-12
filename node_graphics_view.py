@@ -33,6 +33,7 @@ class QDMGraphicsView(QGraphicsView):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
+            # 设置中间平移背景
             self.middle_mouse_button_press(event)
         elif event.button() == Qt.LeftButton:
             self.left_mouse_button_press(event)
@@ -81,6 +82,7 @@ class QDMGraphicsView(QGraphicsView):
         return super(QDMGraphicsView, self).mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
+        """设置滚轮缩放"""
         zoom_out_factor = 1 / self.zoom_in_factor
 
         if event.angleDelta().y() > 0:
