@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/12 17:24
 # Author  : LiaoKong
+from collections import OrderedDict
+
+from node_derializable import Serializable
 from node_graphics_socket import QDMGraphicsSocket
 
 LEFT_TOP = 1
@@ -9,8 +12,9 @@ RIGHT_TOP = 3
 RIGHT_BUTTON = 4
 
 
-class Socket(object):
+class Socket(Serializable):
     def __init__(self, node, index=0, position=LEFT_TOP, socket_type=1):
+        super(Socket, self).__init__()
         self.node = node
         self.index = index
         self.position = position
@@ -35,3 +39,17 @@ class Socket(object):
 
     def __str__(self):
         return '<Socket %s...%s>' % (hex(id(self))[2:5], hex(id(self))[-3:])
+
+    def serialize(self):
+        return OrderedDict([
+            ('id', self.id),
+            ('index', self.index),
+            ('position', self.position),
+            ('socket_type', self.socket_type)
+        ])
+
+    def deserialize(self, data, hashmap=None):
+        self.id = data['id']
+        hashmap[data['id']] = self
+
+        return True

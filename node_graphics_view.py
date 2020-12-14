@@ -218,6 +218,13 @@ class QDMGraphicsView(QGraphicsView):
                 self.delete_selected()
             else:
                 super(QDMGraphicsView, self).keyPressEvent(event)
+
+        elif event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
+            self.gr_scene.scene.save_to_file('graph.json.txt')
+
+        elif event.key() == Qt.Key_L and event.modifiers() & Qt.ControlModifier:
+            self.gr_scene.scene.load_from_file('graph.json.txt')
+
         else:
             super(QDMGraphicsView, self).keyPressEvent(event)
 

@@ -1,27 +1,66 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/12 18:24
 # Author  : LiaoKong
+from collections import OrderedDict
+
+from node_derializable import Serializable
 from node_graphics_edge import *
 
 EDGE_TYPE_DIRECT = 1
 EDGE_TYPE_BEZIER = 2
 
 
-class Edge(object):
-    def __init__(self, scene, start_socket, end_socket, edge_type=EDGE_TYPE_DIRECT):
+class Edge(Serializable):
+    def __init__(self, scene, start_socket=None, end_socket=None, edge_type=EDGE_TYPE_DIRECT):
+        super(Edge, self).__init__()
         self.scene = scene
         self.start_socket = start_socket
         self.end_socket = end_socket
+        self.edge_type = edge_type
 
-        self.start_socket.edge = self
+        self.scene.add_edge(self)
+
+    @property
+    def start_socket(self):
+        return self._start_socket
+
+    @start_socket.setter
+    def start_socket(self, value):
+        self._start_socket = value
+        if self.start_socket is not None:
+            self.start_socket.edge = self
+
+    @property
+    def end_socket(self):
+        return self._end_socket
+
+    @end_socket.setter
+    def end_socket(self, value):
+        self._end_socket = value
         if self.end_socket is not None:
             self.end_socket.edge = self
 
-        self.gr_edge = QDMGraphicsEdgeDirect(self) if edge_type == EDGE_TYPE_DIRECT else QDMGraphicsEdgeBezier(self)
-        self.update_positions()
+    @property
+    def edge_type(self):
+        return self._edge_type
+
+    @edge_type.setter
+    def edge_type(self, value):
+        if hasattr(self, 'gr_edge') and self.gr_edge is not None:
+            self.scene.gr_scene.removeItem(self.gr_edge)
+
+        self._edge_type = value
+        if self._edge_type == EDGE_TYPE_DIRECT:
+            self.gr_edge = QDMGraphicsEdgeDirect(self)
+        elif self._edge_type == EDGE_TYPE_BEZIER:
+            self.gr_edge = QDMGraphicsEdgeBezier(self)
+        else:
+            self.gr_edge = QDMGraphicsEdgeBezier(self)
 
         self.scene.gr_scene.addItem(self.gr_edge)
-        self.scene.add_edge(self)
+
+        if self.start_socket is not None:
+            self.update_positions()
 
     def update_positions(self):
         source_pos = self.start_socket.get_socket_position()
@@ -57,3 +96,17 @@ class Edge(object):
 
     def __str__(self):
         return '<Edge %s...%s>' % (hex(id(self))[2:5], hex(id(self))[-3:])
+
+    def serialize(self):
+        return OrderedDict([
+            ('id', self.id),
+            ('edge_type', self.edge_type),
+            ('start', self.start_socket.id),
+            ('end', self.end_socket.id)
+        ])
+
+    def deserialize(self, data, hashmap=None):
+        self.id = data['id']
+        self.start_socket = hashmap[data['start']]
+        self.end_socket = hashmap[data['end']]
+        self.edge_type = data['edge_type']

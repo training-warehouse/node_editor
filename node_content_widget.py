@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/12 16:43
 # Author  : LiaoKong
+from collections import OrderedDict
+
 from PySide2.QtWidgets import *
 
+from node_derializable import Serializable
 
-class QDMNodeContentWidget(QWidget):
+
+class QDMNodeContentWidget(QWidget, Serializable):
     def __init__(self, node, parent=None):
         super(QDMNodeContentWidget, self).__init__(parent)
         self.node = node
@@ -20,6 +24,12 @@ class QDMNodeContentWidget(QWidget):
 
     def set_editing_flag(self, value):
         self.node.scene.gr_scene.views()[0].editing_flag = value
+
+    def serialize(self):
+        return OrderedDict([])
+
+    def deserialize(self, data, hashmap=None):
+        return False
 
 
 class QDMTextEdit(QTextEdit):
