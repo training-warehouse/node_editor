@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/12 18:31
 # Author  : LiaoKong
+import math
+
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
+
+from node_socket import RIGHT_TOP, RIGHT_BUTTON, LEFT_TOP, LEFT_BUTTON
+
+EDGE_CP_ROUNDNESS = 100
 
 
 class QDMGraphicsEdge(QGraphicsPathItem):
@@ -15,8 +21,11 @@ class QDMGraphicsEdge(QGraphicsPathItem):
         self._color_selected = QColor('#00ff00')
         self._pen = QPen(self._color)
         self._pen_selected = QPen(self._color_selected)
+        self._pen_dragging = QPen(self._color)
+        self._pen_dragging.setStyle(Qt.DashLine)
         self._pen.setWidthF(2.0)
         self._pen_selected.setWidthF(2.0)
+        self._pen_dragging.setWidthF(2.0)
 
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setZValue(-1)
@@ -30,31 +39,53 @@ class QDMGraphicsEdge(QGraphicsPathItem):
     def set_destination(self, x, y):
         self.pos_destination = [x, y]
 
-    def paint(self, painter, option, widget=None):
-        self.update_path()
+    def intersects_with(self, p1, p2):
+        cutpath = QPainterPath(p1)
+        cutpath.lineTo(p2)
+        path = self.calc_path()
+        return cutpath.intersects(path)
 
-        painter.setPen(self._pen if not self.isSelected() else self._pen_selected)
+    def paint(self, painter, option, widget=None):
+        self.setPath(self.calc_path())
+
+        if self.edge.end_socket is None:
+            painter.setPen(self._pen_dragging)
+        else:
+            painter.setPen(self._pen if not self.isSelected() else self._pen_selected)
         painter.setBrush(Qt.NoBrush)
         painter.drawPath(self.path())
 
-    def update_path(self):
+    def calc_path(self):
         raise NotImplementedError
 
 
 class QDMGraphicsEdgeDirect(QDMGraphicsEdge):
-    def update_path(self):
+    def calc_path(self):
         path = QPainterPath(QPointF(self.pos_source[0], self.pos_source[1]))
         path.lineTo(self.pos_destination[0], self.pos_destination[1])
-        self.setPath(path)
+        return path
 
 
 class QDMGraphicsEdgeBezier(QDMGraphicsEdge):
-    def update_path(self):
+    def calc_path(self):
         s = self.pos_source
         d = self.pos_destination
         dist = (d[0] - s[0]) * 0.5
-        if s[0] > d[0]: dist *= -1
+
+        cpx_s = +dist
+        cpx_d = -dist
+        cpy_s = 0
+        cpy_d = 0
+
+        sspos = self.edge.start_socket.position
+        if s[0] > d[0] and sspos in (RIGHT_TOP, RIGHT_BUTTON) or (s[0] < d[0] and sspos in (LEFT_TOP, LEFT_BUTTON)):
+            cpx_d *= -1
+            cpx_s *= -1
+
+            cpy_d = ((s[1] - d[1]) / math.fabs(s[1] - d[1]) if s[1] - d[1] != 0 else 0.00001) * EDGE_CP_ROUNDNESS
+            cpy_s = ((d[1] - s[1]) / math.fabs(d[1] - s[1]) if d[1] - s[1] != 0 else 0.00001) * EDGE_CP_ROUNDNESS
 
         path = QPainterPath(QPointF(self.pos_source[0], self.pos_source[1]))
-        path.cubicTo(s[0] + dist, s[1], d[0] - dist, d[1], self.pos_destination[0], self.pos_destination[1])
-        self.setPath(path)
+        path.cubicTo(s[0] + cpx_s, s[1] + cpy_s, d[0] + cpx_d, d[1] + cpy_d,
+                     self.pos_destination[0], self.pos_destination[1])
+        return path

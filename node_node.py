@@ -11,7 +11,7 @@ class Node(object):
         self.scene = scene
         self.title = title
 
-        self.content = QDMNodeContentWidget()
+        self.content = QDMNodeContentWidget(self)
         self.gr_node = QDMGraphicsNode(self)
 
         self.scene.add_node(self)
@@ -34,6 +34,9 @@ class Node(object):
             self.outputs.append(socket)
             counter += 1
 
+    def __str__(self):
+        return '<Node %s...%s>' % (hex(id(self))[2:5], hex(id(self))[-3:])
+
     def set_pos(self, x, y):
         self.gr_node.setPos(x, y)
 
@@ -54,3 +57,12 @@ class Node(object):
         for socket in self.inputs + self.outputs:
             if socket.has_edge():
                 socket.edge.update_positions()
+
+    def remove(self):
+        for socket in self.inputs+self.outputs:
+            if socket.has_edge():
+                socket.edge.remove()
+
+        self.scene.gr_scene.removeItem(self.gr_node)
+        self.gr_node = None
+        self.scene.remove_node(self)

@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/10 21:42
 # Author  : LiaoKong
-from PySide2.QtWidgets import QGraphicsView
+from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 from PySide2.QtCore import *
 
+from node_edge import EDGE_TYPE_BEZIER, Edge, QDMGraphicsEdge
+from node_graphics_cutline import QDMCutLine
 from node_graphics_socket import QDMGraphicsSocket
 
 MODE_NOOP = 1
 MODE_EDGE_DRAG = 2
+MODE_EDGE_CUT = 3
 
 EDGE_DRAG_START_THRESHOLD = 10
 
@@ -23,12 +26,16 @@ class QDMGraphicsView(QGraphicsView):
         self.setScene(self.gr_scene)
 
         self.mode = MODE_NOOP
+        self.editing_flag = False
 
         self.zoom_in_factor = 1.25
         self.zoom_clamp = True
         self.zoom = 10
         self.zoom_step = 1
         self.zoom_range = [0, 10]
+
+        self.cutline = QDMCutLine()
+        self.gr_scene.addItem(self.cutline)
 
     def init_ui(self):
         self.setRenderHints(QPainter.Antialiasing | QPainter.HighQualityAntialiasing |
@@ -39,6 +46,7 @@ class QDMGraphicsView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        # self.setDragMode(QDMGraphicsView.RubberBandDrag)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
@@ -82,6 +90,17 @@ class QDMGraphicsView(QGraphicsView):
         item = self.get_item_at_click(event)
         self.last_lmb_click_scene_pos = self.mapToScene(event.pos())
 
+        # 多选设置
+        if hasattr(item, 'node') or isinstance(item, QDMGraphicsEdge) or item is None:
+            if event.modifiers() & Qt.ShiftModifier:
+                event.ignore()
+                fake_event = QMouseEvent(QEvent.MouseButtonPress, event.localPos(), event.screenPos(),
+                                         Qt.LeftButton, event.buttons() | Qt.LeftButton,
+                                         event.modifiers() | Qt.ControlModifier)
+
+                super(QDMGraphicsView, self).mousePressEvent(fake_event)
+                return
+
         if isinstance(item, QDMGraphicsSocket):
             if self.mode == MODE_NOOP:
                 self.mode = MODE_EDGE_DRAG
@@ -92,19 +111,46 @@ class QDMGraphicsView(QGraphicsView):
             res = self.edge_drag_end(item)
             if res: return
 
+        if item is None:
+            if event.modifiers() & Qt.ControlModifier:
+                self.mode = MODE_EDGE_CUT
+                fake_event = QMouseEvent(QEvent.MouseButtonRelease, event.localPos(), event.screenPos(),
+                                         Qt.LeftButton, Qt.NoButton, event.modifiers())
+                super(QDMGraphicsView, self).mousePressEvent(fake_event)
+                QApplication.setOverrideCursor(Qt.CrossCursor)
+                return
+
         super(QDMGraphicsView, self).mousePressEvent(event)
 
     def edge_drag_start(self, item):
         print('start dragging edge')
         print('assign start socket')
+        self.previous_edge = item.socket.edge
+        self.last_start_socket = item.socket
+        self.drag_edge = Edge(self.gr_scene.scene, item.socket, None, EDGE_TYPE_BEZIER)
 
     def edge_drag_end(self, item):
         self.mode = MODE_NOOP
-        print('end dragging edge')
-
         if isinstance(item, QDMGraphicsSocket):
-            print('assign end socket')
-            return True
+            if item.socket != self.last_start_socket:
+                if item.socket.has_edge():
+                    item.socket.edge.remove()
+
+                if self.previous_edge is not None:
+                    self.previous_edge.remove()
+
+                self.drag_edge.start_socket = self.last_start_socket
+                self.drag_edge.end_socket = item.socket
+                self.drag_edge.start_socket.set_connected_edge(self.drag_edge)
+                self.drag_edge.end_socket.set_connected_edge(self.drag_edge)
+                self.drag_edge.update_positions()
+                return True
+
+        self.drag_edge.remove()
+        self.drag_edge = None
+
+        if self.previous_edge is not None:
+            self.previous_edge.start_socket.edge = self.previous_edge
 
         return False
 
@@ -118,16 +164,45 @@ class QDMGraphicsView(QGraphicsView):
 
     def left_mouse_button_release(self, event):
         item = self.get_item_at_click(event)
-        if self.mode == MODE_EDGE_DRAG:
 
+        # 多选设置
+        if hasattr(item, 'node') or isinstance(item, QDMGraphicsEdge) or item is None:
+            if event.modifiers() & Qt.ShiftModifier:
+                event.ignore()
+                fake_event = QMouseEvent(event.type(), event.localPos(), event.screenPos(),
+                                         Qt.LeftButton, Qt.NoButton,
+                                         event.modifiers() | Qt.ControlModifier)
+
+                super(QDMGraphicsView, self).mouseReleaseEvent(fake_event)
+                return
+
+        if self.mode == MODE_EDGE_DRAG:
             if self.distance_between_click_and_release_is_off(event):
                 res = self.edge_drag_end(item)
                 if res: return
 
+        if self.mode == MODE_EDGE_CUT:
+            self.cut_intersecting_edges()
+            self.cutline.line_points = []
+            self.cutline.update()
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            self.mode = MODE_NOOP
+            return
+
         super(QDMGraphicsView, self).mouseReleaseEvent(event)
 
+    def cut_intersecting_edges(self):
+        for ix in range(len(self.cutline.line_points) - 1):
+            p1 = self.cutline.line_points[ix]
+            p2 = self.cutline.line_points[ix - 1]
+
+            for edge in self.gr_scene.scene.edges:
+                if edge.gr_edge.intersects_with(p1, p2):
+                    edge.remove()
+
     def right_mouse_button_press(self, event):
-        return super(QDMGraphicsView, self).mousePressEvent(event)
+        super(QDMGraphicsView, self).mousePressEvent(event)
+        item = self.get_item_at_click(event)
 
     def right_mouse_button_release(self, event):
         return super(QDMGraphicsView, self).mouseReleaseEvent(event)
@@ -136,6 +211,22 @@ class QDMGraphicsView(QGraphicsView):
         pos = event.pos()
         obj = self.itemAt(pos)
         return obj
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Delete:
+            if not self.editing_flag:
+                self.delete_selected()
+            else:
+                super(QDMGraphicsView, self).keyPressEvent(event)
+        else:
+            super(QDMGraphicsView, self).keyPressEvent(event)
+
+    def delete_selected(self):
+        for item in self.gr_scene.selectedItems():
+            if isinstance(item, QDMGraphicsEdge):
+                item.edge.remove()
+            elif hasattr(item, 'node'):
+                item.node.remove()
 
     def wheelEvent(self, event):
         """设置滚轮缩放"""
@@ -154,3 +245,23 @@ class QDMGraphicsView(QGraphicsView):
 
         if not clamped or not self.zoom_clamp:
             self.scale(zoom_factor, zoom_factor)
+
+    def mouseMoveEvent(self, event):
+        if self.mode == MODE_EDGE_DRAG:
+            pos = self.mapToScene(event.pos())
+            self.drag_edge.gr_edge.set_destination(pos.x(), pos.y())
+            self.drag_edge.gr_edge.update()
+
+        if self.mode == MODE_EDGE_CUT:
+            pos = self.mapToScene(event.pos())
+            self.cutline.line_points.append(pos)
+            self.cutline.update()
+
+        super(QDMGraphicsView, self).mouseMoveEvent(event)
+
+    def debug_modifiers(self, event):
+        out = 'MODES: '
+        if event.modifiers() & Qt.ShiftModifier: out += 'SHIFT '
+        if event.modifiers() & Qt.ControlModifier: out += 'CTRL '
+        if event.modifiers() & Qt.AltModifier: out += 'SHIFT '
+        return out

@@ -19,8 +19,9 @@ class Edge(object):
 
         self.gr_edge = QDMGraphicsEdgeDirect(self) if edge_type == EDGE_TYPE_DIRECT else QDMGraphicsEdgeBezier(self)
         self.update_positions()
-        print('Edge:', self.gr_edge.pos_source, 'to:', self.gr_edge.pos_destination)
+
         self.scene.gr_scene.addItem(self.gr_edge)
+        self.scene.add_edge(self)
 
     def update_positions(self):
         source_pos = self.start_socket.get_socket_position()
@@ -32,6 +33,8 @@ class Edge(object):
             end_pos[0] += self.end_socket.node.gr_node.pos().x()
             end_pos[1] += self.end_socket.node.gr_node.pos().y()
             self.gr_edge.set_destination(*end_pos)
+        else:
+            self.gr_edge.set_destination(*source_pos)
 
         self.gr_edge.update()
 
@@ -47,4 +50,10 @@ class Edge(object):
         self.remove_from_sockets()
         self.scene.gr_scene.removeItem(self.gr_edge)
         self.gr_edge = None
-        self.scene.remove_edge(self)
+        try:
+            self.scene.remove_edge(self)
+        except ValueError:
+            pass
+
+    def __str__(self):
+        return '<Edge %s...%s>' % (hex(id(self))[2:5], hex(id(self))[-3:])

@@ -8,8 +8,9 @@ from PySide2.QtGui import *
 
 
 class QDMGraphicsSocket(QGraphicsItem):
-    def __init__(self, parent=None, socket_type=1):
-        super(QDMGraphicsSocket, self).__init__(parent)
+    def __init__(self, socket, socket_type=1):
+        self.socket = socket
+        super(QDMGraphicsSocket, self).__init__(self.socket.node.gr_node)
 
         self.radius = 6.0
         self.outline_width = 1.0
