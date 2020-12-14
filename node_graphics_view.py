@@ -144,6 +144,7 @@ class QDMGraphicsView(QGraphicsView):
                 self.drag_edge.start_socket.set_connected_edge(self.drag_edge)
                 self.drag_edge.end_socket.set_connected_edge(self.drag_edge)
                 self.drag_edge.update_positions()
+                self.gr_scene.scene.history.store_history('Create new edge by dragging')
                 return True
 
         self.drag_edge.remove()
@@ -189,6 +190,9 @@ class QDMGraphicsView(QGraphicsView):
             self.mode = MODE_NOOP
             return
 
+        if self.dragMode() == QGraphicsView.RubberBandDrag:
+            self.gr_scene.scene.history.store_history('Selection Changed')
+
         super(QDMGraphicsView, self).mouseReleaseEvent(event)
 
     def cut_intersecting_edges(self):
@@ -199,10 +203,10 @@ class QDMGraphicsView(QGraphicsView):
             for edge in self.gr_scene.scene.edges:
                 if edge.gr_edge.intersects_with(p1, p2):
                     edge.remove()
+        self.gr_scene.scene.history.store_history('Delete Cutted edges')
 
     def right_mouse_button_press(self, event):
         super(QDMGraphicsView, self).mousePressEvent(event)
-        item = self.get_item_at_click(event)
 
     def right_mouse_button_release(self, event):
         return super(QDMGraphicsView, self).mouseReleaseEvent(event)
@@ -225,6 +229,15 @@ class QDMGraphicsView(QGraphicsView):
         elif event.key() == Qt.Key_L and event.modifiers() & Qt.ControlModifier:
             self.gr_scene.scene.load_from_file('graph.json.txt')
 
+        elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and not event.modifiers() & Qt.ShiftModifier:
+            self.gr_scene.scene.history.undo()
+
+        elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and event.modifiers() & Qt.ControlModifier:
+            self.gr_scene.scene.history.redo()
+
+        elif event.key() == Qt.Key_H:
+            print(self.gr_scene.scene.history.history_stack)
+
         else:
             super(QDMGraphicsView, self).keyPressEvent(event)
 
@@ -234,6 +247,7 @@ class QDMGraphicsView(QGraphicsView):
                 item.edge.remove()
             elif hasattr(item, 'node'):
                 item.node.remove()
+        self.gr_scene.scene.history.store_history('Delete Selected')
 
     def wheelEvent(self, event):
         """设置滚轮缩放"""
