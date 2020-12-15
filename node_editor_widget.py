@@ -13,9 +13,9 @@ from node_edge import *
 from node_scene import Scene
 
 
-class NodeEditorWind(QWidget):
+class NodeEditorWidget(QWidget):
     def __init__(self, parent=None):
-        super(NodeEditorWind, self).__init__(parent)
+        super(NodeEditorWidget, self).__init__(parent)
 
         self.stylesheet_filename = 'qss/node_style.css'
         self.load_stylesheet(self.stylesheet_filename)
@@ -23,7 +23,6 @@ class NodeEditorWind(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        self.setGeometry(200, 200, 800, 600)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
@@ -34,9 +33,6 @@ class NodeEditorWind(QWidget):
 
         self.view = QDMGraphicsView(self.scene.gr_scene, self)
         self.layout.addWidget(self.view)
-
-        self.setWindowTitle('Node Editor')
-        self.show()
 
         # self.add_debug_content()
 

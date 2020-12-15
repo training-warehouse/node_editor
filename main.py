@@ -3,12 +3,12 @@
 # Author  : LiaoKong
 
 from PySide2.QtWidgets import *
-from node_editor_wnd import NodeEditorWind
+from node_editor_window import NodeEditorWindow
 
 if __name__ == '__main__':
     app =QApplication([])
 
-    window = NodeEditorWind()
+    window = NodeEditorWindow()
     window.show()
 
     app.exec_()

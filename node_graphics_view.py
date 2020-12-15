@@ -17,6 +17,8 @@ EDGE_DRAG_START_THRESHOLD = 10
 
 
 class QDMGraphicsView(QGraphicsView):
+    scenePosChanged = Signal(int, int)
+
     def __init__(self, gr_scene, parent=None):
         super(QDMGraphicsView, self).__init__(parent)
 
@@ -46,7 +48,7 @@ class QDMGraphicsView(QGraphicsView):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
-        # self.setDragMode(QDMGraphicsView.RubberBandDrag)
+        self.setDragMode(QDMGraphicsView.RubberBandDrag)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MiddleButton:
@@ -84,7 +86,7 @@ class QDMGraphicsView(QGraphicsView):
         fake_event = QMouseEvent(event.type(), event.localPos(), event.screenPos(),
                                  Qt.LeftButton, event.buttons() & ~Qt.LeftButton, event.modifiers())
         super(QDMGraphicsView, self).mouseReleaseEvent(fake_event)
-        self.setDragMode(QGraphicsView.NoDrag)
+        self.setDragMode(QGraphicsView.RubberBandDrag)
 
     def left_mouse_button_press(self, event):
         item = self.get_item_at_click(event)
@@ -118,6 +120,7 @@ class QDMGraphicsView(QGraphicsView):
                                          Qt.LeftButton, Qt.NoButton, event.modifiers())
                 super(QDMGraphicsView, self).mousePressEvent(fake_event)
                 QApplication.setOverrideCursor(Qt.CrossCursor)
+                self.setDragMode(QGraphicsView.NoDrag)
                 return
 
         super(QDMGraphicsView, self).mousePressEvent(event)
@@ -188,6 +191,7 @@ class QDMGraphicsView(QGraphicsView):
             self.cutline.update()
             QApplication.setOverrideCursor(Qt.ArrowCursor)
             self.mode = MODE_NOOP
+            self.setDragMode(QGraphicsView.RubberBandDrag)
             return
 
         if self.dragMode() == QGraphicsView.RubberBandDrag:
@@ -217,29 +221,29 @@ class QDMGraphicsView(QGraphicsView):
         return obj
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Delete:
-            if not self.editing_flag:
-                self.delete_selected()
-            else:
-                super(QDMGraphicsView, self).keyPressEvent(event)
+        # if event.key() == Qt.Key_Delete:
+        #     if not self.editing_flag:
+        #         self.delete_selected()
+        #     else:
+        #         super(QDMGraphicsView, self).keyPressEvent(event)
 
-        elif event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
-            self.gr_scene.scene.save_to_file('graph.json.txt')
+        # elif event.key() == Qt.Key_S and event.modifiers() & Qt.ControlModifier:
+        #     self.gr_scene.scene.save_to_file('graph.json.txt')
+        #
+        # elif event.key() == Qt.Key_L and event.modifiers() & Qt.ControlModifier:
+        #     self.gr_scene.scene.load_from_file('graph.json.txt')
+        #
+        # elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and not event.modifiers() & Qt.ShiftModifier:
+        #     self.gr_scene.scene.history.undo()
+        #
+        # elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and event.modifiers() & Qt.ControlModifier:
+        #     self.gr_scene.scene.history.redo()
 
-        elif event.key() == Qt.Key_L and event.modifiers() & Qt.ControlModifier:
-            self.gr_scene.scene.load_from_file('graph.json.txt')
-
-        elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and not event.modifiers() & Qt.ShiftModifier:
-            self.gr_scene.scene.history.undo()
-
-        elif event.key() == Qt.Key_Z and event.modifiers() & Qt.ControlModifier and event.modifiers() & Qt.ControlModifier:
-            self.gr_scene.scene.history.redo()
-
-        elif event.key() == Qt.Key_H:
-            print(self.gr_scene.scene.history.history_stack)
-
-        else:
-            super(QDMGraphicsView, self).keyPressEvent(event)
+        # if event.key() == Qt.Key_H:
+        #     print(self.gr_scene.scene.history.history_stack)
+        #
+        # else:
+        super(QDMGraphicsView, self).keyPressEvent(event)
 
     def delete_selected(self):
         for item in self.gr_scene.selectedItems():
@@ -277,6 +281,9 @@ class QDMGraphicsView(QGraphicsView):
             pos = self.mapToScene(event.pos())
             self.cutline.line_points.append(pos)
             self.cutline.update()
+
+        self.last_scene_mouse_position = self.mapToScene(event.pos())
+        self.scenePosChanged.emit(int(self.last_scene_mouse_position.x()), int(self.last_scene_mouse_position.y()))
 
         super(QDMGraphicsView, self).mouseMoveEvent(event)
 
