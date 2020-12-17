@@ -29,6 +29,7 @@ class QDMGraphicsView(QGraphicsView):
 
         self.mode = MODE_NOOP
         self.editing_flag = False
+        self.rubber_band_dragging_rectangle = False
 
         self.zoom_in_factor = 1.25
         self.zoom_clamp = True
@@ -122,39 +123,51 @@ class QDMGraphicsView(QGraphicsView):
                 QApplication.setOverrideCursor(Qt.CrossCursor)
                 self.setDragMode(QGraphicsView.NoDrag)
                 return
+            else:
+                self.rubber_band_dragging_rectangle = True
 
         super(QDMGraphicsView, self).mousePressEvent(event)
 
     def edge_drag_start(self, item):
         print('start dragging edge')
-        print('assign start socket')
-        self.previous_edge = item.socket.edge
-        self.last_start_socket = item.socket
+        self.drag_start_socket = item.socket
         self.drag_edge = Edge(self.gr_scene.scene, item.socket, None, EDGE_TYPE_BEZIER)
+        print(self.drag_edge)
 
     def edge_drag_end(self, item):
         self.mode = MODE_NOOP
-        if isinstance(item, QDMGraphicsSocket):
-            if item.socket != self.last_start_socket:
-                if item.socket.has_edge():
-                    item.socket.edge.remove()
-
-                if self.previous_edge is not None:
-                    self.previous_edge.remove()
-
-                self.drag_edge.start_socket = self.last_start_socket
-                self.drag_edge.end_socket = item.socket
-                self.drag_edge.start_socket.set_connected_edge(self.drag_edge)
-                self.drag_edge.end_socket.set_connected_edge(self.drag_edge)
-                self.drag_edge.update_positions()
-                self.gr_scene.scene.history.store_history('Create new edge by dragging')
-                return True
 
         self.drag_edge.remove()
         self.drag_edge = None
 
-        if self.previous_edge is not None:
-            self.previous_edge.start_socket.edge = self.previous_edge
+        if isinstance(item, QDMGraphicsSocket):
+            if item.socket != self.drag_start_socket:
+                # if item.socket.has_edge():
+                #     item.socket.edge.remove()
+
+                # for edge in item.socket.edges:
+                #     edge.remove()
+                if not item.socket.is_multi_edges:
+                    item.socket.remove_all_edges()
+
+                if not self.drag_start_socket.is_multi_edges:
+                    self.drag_start_socket.remove_all_edges()
+                # if self.previous_edge is not None:
+                #     self.previous_edge.remove()
+
+                # self.drag_edge.start_socket = self.drag_start_socket
+                # self.drag_edge.end_socket = item.socket
+                # self.drag_edge.start_socket.add_edge(self.drag_edge)
+                # self.drag_edge.end_socket.add_edge(self.drag_edge)
+                # self.drag_edge.update_positions()
+
+                new_edge = Edge(self.gr_scene.scene, self.drag_start_socket, item.socket, EDGE_TYPE_BEZIER)
+
+                self.gr_scene.scene.history.store_history('Create new edge by dragging', set_modified=True)
+                return True
+
+        # if self.previous_edge is not None:
+        #     self.previous_edge.start_socket.edge = self.previous_edge
 
         return False
 
@@ -194,8 +207,10 @@ class QDMGraphicsView(QGraphicsView):
             self.setDragMode(QGraphicsView.RubberBandDrag)
             return
 
-        if self.dragMode() == QGraphicsView.RubberBandDrag:
+        # if self.dragMode() == QGraphicsView.RubberBandDrag:
+        if self.rubber_band_dragging_rectangle:
             self.gr_scene.scene.history.store_history('Selection Changed')
+            self.rubber_band_draggin_rectangle = False
 
         super(QDMGraphicsView, self).mouseReleaseEvent(event)
 
@@ -207,7 +222,7 @@ class QDMGraphicsView(QGraphicsView):
             for edge in self.gr_scene.scene.edges:
                 if edge.gr_edge.intersects_with(p1, p2):
                     edge.remove()
-        self.gr_scene.scene.history.store_history('Delete Cutted edges')
+        self.gr_scene.scene.history.store_history('Delete Cutted edges', set_modified=True)
 
     def right_mouse_button_press(self, event):
         super(QDMGraphicsView, self).mousePressEvent(event)
@@ -251,7 +266,7 @@ class QDMGraphicsView(QGraphicsView):
                 item.edge.remove()
             elif hasattr(item, 'node'):
                 item.node.remove()
-        self.gr_scene.scene.history.store_history('Delete Selected')
+        self.gr_scene.scene.history.store_history('Delete Selected', set_modified=True)
 
     def wheelEvent(self, event):
         """设置滚轮缩放"""

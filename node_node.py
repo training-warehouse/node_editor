@@ -29,13 +29,13 @@ class Node(Serializable):
         self.outputs = []
         counter = 0
         for item in inputs or []:
-            socket = Socket(self, counter, LEFT_BUTTON, item)
+            socket = Socket(self, counter, LEFT_BUTTON, item, multi_edges=False)
             self.inputs.append(socket)
             counter += 1
 
         counter = 0
         for item in outputs or []:
-            socket = Socket(self, counter, RIGHT_TOP, item)
+            socket = Socket(self, counter, RIGHT_TOP, item, multi_edges=True)
             self.outputs.append(socket)
             counter += 1
 
@@ -69,13 +69,15 @@ class Node(Serializable):
 
     def update_connected_edges(self):
         for socket in self.inputs + self.outputs:
-            if socket.has_edge():
-                socket.edge.update_positions()
+            # if socket.has_edge():
+            for edge in socket.edges:
+                edge.update_positions()
 
     def remove(self):
         for socket in self.inputs + self.outputs:
-            if socket.has_edge():
-                socket.edge.remove()
+            # if socket.has_edge():
+            for edge in socket.edges:
+                edge.remove()
 
         self.scene.gr_scene.removeItem(self.gr_node)
         self.gr_node = None
@@ -119,7 +121,5 @@ class Node(Serializable):
                                 socket_type=socket_data['socket_type'])
             new_socket.deserialize(socket_data, hashmap, restore_id)
             self.outputs.append(new_socket)
-
-        print(hashmap)
 
         return True

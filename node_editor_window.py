@@ -18,12 +18,6 @@ class NodeEditorWindow(QMainWindow):
 
         self.init_ui()
 
-        QApplication.instance().clipboard().dataChanged.connect(self.on_clipboard_changed)
-
-    def on_clipboard_changed(self):
-        clipboard = QApplication.instance().clipboard()
-        print(clipboard.text())
-
     def create_act(self, name, shortcut, tooltip, callback):
         act = QAction(name, self)
         act.setShortcut(shortcut)
@@ -54,6 +48,7 @@ class NodeEditorWindow(QMainWindow):
         edit_menu.addAction(self.create_act('&Delete', 'Del', 'Delete Selected Items', self.on_edit_del))
 
         node_editor = NodeEditorWidget(self)
+        node_editor.scene.add_has_been_modified_listeners(self.change_title)
         self.setCentralWidget(node_editor)
 
         self.statusBar().showMessage('')
@@ -63,35 +58,78 @@ class NodeEditorWindow(QMainWindow):
 
         self.setGeometry(200, 200, 800, 600)
 
-        self.setWindowTitle('Node Editor')
+        self.change_title()
         self.show()
+
+    def change_title(self):
+        title = 'Node Editor - '
+        if self.filename is None:
+            title += "New"
+        else:
+            title += os.path.basename(self.filename)
+
+        if self.centralWidget().scene.has_been_modified:
+            title += '*'
+
+        self.setWindowTitle(title)
+
+    def closeEvent(self, event):
+        if self.maybe_save():
+            event.accept()
+        else:
+            event.ignore()
+
+    def is_modified(self):
+        return self.centralWidget().scene.has_been_modified
+
+    def maybe_save(self):
+        if not self.is_modified():
+            return True
+        res = QMessageBox.warning(self, 'About to loose your work?',
+                                  'The document has been modified.\n Do you want to save your changes?',
+                                  QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
+
+        if res == QMessageBox.Save:
+            return self.on_file_save()
+        elif res == QMessageBox.Cancel:
+            return False
+
+        return True
 
     def on_scene_pos_changed(self, x, y):
         self.status_mouse_pos.setText('ScenePos： [{}, {}]'.format(x, y))
 
     def on_file_new(self):
-        self.centralWidget().scene.clear()
+        if self.maybe_save():
+            self.centralWidget().scene.clear()
+            self.filename = None
+            self.change_title()
 
     def on_file_open(self):
-        filename, file_filter = QFileDialog.getOpenFileName(self, 'Open graph form file')
-        if not filename:
-            return
-        if os.path.isfile(filename):
-            self.centralWidget().scene.load_from_file(filename)
+        if self.maybe_save():
+            filename, file_filter = QFileDialog.getOpenFileName(self, 'Open graph form file')
+            if not filename:
+                return
+            if os.path.isfile(filename):
+                self.centralWidget().scene.load_from_file(filename)
+                self.filename = filename
+                self.change_title()
 
     def on_file_save(self):
         if not self.filename:
             return self.on_file_save_as()
         self.centralWidget().scene.save_to_file(self.filename)
         self.statusBar().showMessage('Successfully saved ' + self.filename)
+        return True
 
     def on_file_save_as(self):
         filename, file_filter = QFileDialog.getSaveFileName(self, 'Save graph form file')
         if not filename:
-            return
+            return False
 
         self.filename = filename
         self.on_file_save()
+        return True
 
     def on_edit_undo(self):
         self.centralWidget().scene.history.undo()

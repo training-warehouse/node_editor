@@ -71,7 +71,7 @@ class QDMGraphicsNode(QGraphicsItem):
 
         if self.was_moved:
             self.was_moved = False
-            self.node.scene.history.store_history('Node Move')
+            self.node.scene.history.store_history('Node Move', set_modified=True)
 
     @property
     def title(self):

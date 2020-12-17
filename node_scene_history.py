@@ -31,7 +31,10 @@ class SceneHistory(object):
 
         self.restore_history_stamp(self.history_stack[self.history_current_step])
 
-    def store_history(self, desc):
+    def store_history(self, desc, set_modified=False):
+        if set_modified:
+            self.scene.has_been_modified = True
+
         if DEBUG: print('store_history... current_step:', self.history_current_step, len(self.history_stack))
 
         if self.history_current_step + 1 < len(self.history_stack):

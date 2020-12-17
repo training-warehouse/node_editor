@@ -42,7 +42,7 @@ class SceneClipboard(object):
         ])
         if delete:
             self.scene.gr_scene.views()[0].delete_selected()
-            self.scene.history.store_history('Cut out elements from scene')
+            self.scene.history.store_history('Cut out elements from scene', set_modified=True)
 
         return data
 
@@ -79,4 +79,4 @@ class SceneClipboard(object):
                 new_edge = Edge(self.scene)
                 new_edge.deserialize(edge_data, hashmap, restore_id=False)
 
-        self.scene.history.store_history('Pasted elements in center')
+        self.scene.history.store_history('Pasted elements in center', set_modified=True)
