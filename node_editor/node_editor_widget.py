@@ -3,22 +3,16 @@
 # Author  : LiaoKong
 import os
 
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
-from PySide2.QtCore import *
-
-from node_graphics_view import QDMGraphicsView
-from node_node import Node
-from node_edge import *
-from node_scene import Scene
+from node_editor.node_graphics_view import QDMGraphicsView
+from node_editor.node_node import Node
+from node_editor.node_edge import *
+from node_editor.node_scene import Scene
 
 
 class NodeEditorWidget(QWidget):
     def __init__(self, parent=None):
         super(NodeEditorWidget, self).__init__(parent)
-
-        self.stylesheet_filename = 'qss/node_style.css'
-        self.load_stylesheet(self.stylesheet_filename)
+        self.filename = None
 
         self.init_ui()
 
@@ -35,6 +29,16 @@ class NodeEditorWidget(QWidget):
         self.layout.addWidget(self.view)
 
         # self.add_debug_content()
+
+    def is_filename_set(self):
+        return self.filename is not None
+
+    def is_modified(self):
+        return self.scene.has_been_modified
+
+    def get_user_friendly_filename(self):
+        name = os.path.basename(self.filename) if self.is_filename_set() else 'New Graph'
+        return name + ('*' if self.is_modified() else '')
 
     def add_nodes(self):
         node1 = Node(self.scene, "My Awesome Node1", inputs=[1, 2, 3], outputs=[1])
@@ -74,7 +78,3 @@ class NodeEditorWidget(QWidget):
         line = self.gr_scene.addLine(-200, -200, 400, -100, outline_pen)
         line.setFlag(QGraphicsItem.ItemIsMovable)
         line.setFlag(QGraphicsItem.ItemIsSelectable)
-
-    def load_stylesheet(self, filename):
-        with open(os.path.join(os.path.dirname(__file__), filename)) as f:
-            QApplication.instance().setStyleSheet(f.read())

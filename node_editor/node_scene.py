@@ -4,12 +4,12 @@
 import json
 from collections import OrderedDict
 
-from node_derializable import Serializable
-from node_graphics_scene import QDMGraphicsScene
-from node_scene_history import SceneHistory
-from node_scene_clipboard import SceneClipboard
-from node_node import Node
-from node_edge import Edge
+from node_editor.node_derializable import Serializable
+from node_editor.node_graphics_scene import QDMGraphicsScene
+from node_editor.node_scene_history import SceneHistory
+from node_editor.node_scene_clipboard import SceneClipboard
+from node_editor.node_node import Node
+from node_editor.node_edge import Edge
 
 
 class Scene(Serializable):

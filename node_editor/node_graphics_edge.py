@@ -7,7 +7,7 @@ from PySide2.QtWidgets import *
 from PySide2.QtCore import *
 from PySide2.QtGui import *
 
-from node_socket import RIGHT_TOP, RIGHT_BUTTON, LEFT_TOP, LEFT_BUTTON
+from node_editor.node_socket import RIGHT_TOP, RIGHT_BUTTON, LEFT_TOP, LEFT_BUTTON
 
 EDGE_CP_ROUNDNESS = 100
 

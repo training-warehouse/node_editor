@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/12 15:27
 # Author  : LiaoKong
-from collections import OrderedDict
 
-from node_derializable import Serializable
-from node_content_widget import QDMNodeContentWidget
-from node_graphics_node import QDMGraphicsNode
-from node_socket import *
+from node_editor.node_content_widget import QDMNodeContentWidget
+from node_editor.node_graphics_node import QDMGraphicsNode
+from node_editor.node_socket import *
 
 
 class Node(Serializable):

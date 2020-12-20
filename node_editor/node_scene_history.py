@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Time    : 2020/12/14 22:05
 # Author  : LiaoKong
-from node_graphics_edge import QDMGraphicsEdge
+from node_editor.node_graphics_edge import QDMGraphicsEdge
 
 DEBUG = True
 

@@ -3,8 +3,8 @@
 # Author  : LiaoKong
 from collections import OrderedDict
 
-from node_derializable import Serializable
-from node_graphics_edge import *
+from node_editor.node_derializable import Serializable
+from node_editor.node_graphics_edge import *
 
 EDGE_TYPE_DIRECT = 1
 EDGE_TYPE_BEZIER = 2

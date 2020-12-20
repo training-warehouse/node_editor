@@ -5,9 +5,9 @@ from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 from PySide2.QtCore import *
 
-from node_edge import EDGE_TYPE_BEZIER, Edge, QDMGraphicsEdge
-from node_graphics_cutline import QDMCutLine
-from node_graphics_socket import QDMGraphicsSocket
+from node_editor.node_edge import EDGE_TYPE_BEZIER, Edge, QDMGraphicsEdge
+from node_editor.node_graphics_cutline import QDMCutLine
+from node_editor.node_graphics_socket import QDMGraphicsSocket
 
 MODE_NOOP = 1
 MODE_EDGE_DRAG = 2

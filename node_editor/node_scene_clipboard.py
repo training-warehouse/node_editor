@@ -3,9 +3,9 @@
 # Author  : LiaoKong
 from collections import OrderedDict
 
-from node_edge import Edge
-from node_graphics_edge import QDMGraphicsEdge
-from node_node import Node
+from node_editor.node_edge import Edge
+from node_editor.node_graphics_edge import QDMGraphicsEdge
+from node_editor.node_node import Node
 
 
 class SceneClipboard(object):

@@ -3,8 +3,8 @@
 # Author  : LiaoKong
 from collections import OrderedDict
 
-from node_derializable import Serializable
-from node_graphics_socket import QDMGraphicsSocket
+from node_editor.node_derializable import Serializable
+from node_editor.node_graphics_socket import QDMGraphicsSocket
 
 LEFT_TOP = 1
 LEFT_BUTTON = 2

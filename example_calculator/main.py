@@ -3,12 +3,14 @@
 # Author  : LiaoKong
 
 from PySide2.QtWidgets import *
-from node_editor_window import NodeEditorWindow
+from example_calculator.calc_window import CalculatorWindow
 
 if __name__ == '__main__':
     app =QApplication([])
 
-    window = NodeEditorWindow()
+    print(QStyleFactory.keys())
+    app.setStyle('Fusion')
+    window = CalculatorWindow()
     window.show()
 
     app.exec_()
