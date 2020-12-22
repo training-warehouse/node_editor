@@ -23,6 +23,8 @@ class CalculatorWindow(NodeEditorWindow):
             self.stylesheet_filename
         )
 
+        self.empty_icon = QIcon('.')
+
         self.mdi_area = QMdiArea()
         self.mdi_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.mdi_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -80,14 +82,52 @@ class CalculatorWindow(NodeEditorWindow):
                                 statusTip="Show the application's About box",
                                 triggered=self.about)
 
+    def on_file_open(self):
+        filenames, file_filter = QFileDialog.getOpenFileNames(self, 'Open graph form file')
+        for filename in filenames:
+            if os.path.isfile(filename):
+                if filename:
+                    exsting = self.find_mdi_child(filename)
+                    if exsting:
+                        self.mdi_area.setActiveSubWindow(exsting)
+                    else:
+                        node_editor = CalculatorSubWindow()
+                        if node_editor.file_load(filename):
+                            self.statusBar().showMessage('File %s loaded' % filename, 5000)
+                            node_editor.set_title()
+                            sub_window = self.create_mdi_child(node_editor)
+                            sub_window.show()
+                        else:
+                            node_editor.close()
+
+    def find_mdi_child(self, filename):
+        for window in self.mdi_area.subWindowList():
+            if window.widget().filename == filename:
+                return window
+        return None
+
     def on_file_new(self):
         sub_window = self.create_mdi_child()
         sub_window.show()
 
-    def create_mdi_child(self):
-        node_editor = CalculatorSubWindow()
+    def create_mdi_child(self, child_widget=None):
+        node_editor = child_widget if child_widget is not None else CalculatorSubWindow()
         sub_window = self.mdi_area.addSubWindow(node_editor)
+        sub_window.setWindowIcon(self.empty_icon)
+        # node_editor.scene.add_item_selected_listener(self.update_edit_menu)
+        # node_editor.scene.add_item_deselected_listener(self.update_edit_menu)
+        node_editor.scene.history.add_history_modified_listener(self.update_edit_menu)
+        node_editor.add_close_event_listener(self.on_sub_window_close)
         return sub_window
+
+    def on_sub_window_close(self, widget, event):
+        existing = self.find_mdi_child(widget.filename)
+        self.mdi_area.setActiveSubWindow(existing)
+
+        if self.maybe_save():
+            event.accept()
+        else:
+            event.ignore()
 
     def about(self):
         QMessageBox.about(self, "About MDI",
@@ -104,6 +144,8 @@ class CalculatorWindow(NodeEditorWindow):
 
         self.helpMenu = self.menuBar().addMenu("&Help")
         self.helpMenu.addAction(self.aboutAct)
+
+        self.edit_menu.aboutToShow.connect(self.update_edit_menu)
 
     def updateWindowMenu(self):
         self.windowMenu.clear()
@@ -129,12 +171,44 @@ class CalculatorWindow(NodeEditorWindow):
 
             action = self.windowMenu.addAction(text)
             action.setCheckable(True)
-            action.setChecked(child is self.activeMdiChild())
+            action.setChecked(child is self.get_current_node_editor_widget())
             action.triggered.connect(self.window_mapper.map)
             self.window_mapper.setMapping(action, window)
 
+    def get_current_node_editor_widget(self):
+        activeSubWindow = self.mdi_area.activeSubWindow()
+        if activeSubWindow:
+            return activeSubWindow.widget()
+        return None
+
     def update_menus(self):
-        pass
+        active = self.get_current_node_editor_widget()
+        has_mdi_child = (active is not None)
+
+        self.action_save.setEnabled(has_mdi_child)
+        self.action_save_as.setEnabled(has_mdi_child)
+        self.closeAct.setEnabled(has_mdi_child)
+        self.closeAllAct.setEnabled(has_mdi_child)
+        self.tileAct.setEnabled(has_mdi_child)
+        self.cascadeAct.setEnabled(has_mdi_child)
+        self.nextAct.setEnabled(has_mdi_child)
+        self.previousAct.setEnabled(has_mdi_child)
+        self.separatorAct.setEnabled(has_mdi_child)
+
+        self.update_edit_menu()
+
+    def update_edit_menu(self):
+        active = self.get_current_node_editor_widget()
+        has_mdi_child = (active is not None)
+
+        self.action_paste.setEnabled(has_mdi_child)
+
+        self.action_cut.setEnabled(has_mdi_child and active.has_selected_items())
+        self.action_copy.setEnabled(has_mdi_child and active.has_selected_items())
+        self.action_del.setEnabled(has_mdi_child and active.has_selected_items())
+
+        self.action_undo.setEnabled(has_mdi_child and active.can_undo())
+        self.action_redo.setEnabled(has_mdi_child and active.can_redo())
 
     def create_tool_bars(self):
         pass
@@ -163,9 +237,3 @@ class CalculatorWindow(NodeEditorWindow):
         else:
             self.write_settings()
             event.accept()
-
-    def activeMdiChild(self):
-        activeSubWindow = self.mdi_area.activeSubWindow()
-        if activeSubWindow:
-            return activeSubWindow.widget()
-        return None

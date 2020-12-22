@@ -61,7 +61,8 @@ class NodeEditorWindow(QMainWindow):
         self.edit_menu.addAction(self.action_del)
 
     def create_actions(self):
-        self.action_new = QAction('&New', self, shortcut='Ctrl+N', statusTip='Create New Graph', triggered=self.on_file_new)
+        self.action_new = QAction('&New', self, shortcut='Ctrl+N', statusTip='Create New Graph',
+                                  triggered=self.on_file_new)
         self.action_open = QAction('&Open', self, shortcut='Ctrl+O', statusTip='Open File', triggered=self.on_file_open)
         self.action_save = QAction('&Save', self, shortcut='Ctrl+S', statusTip='Save File', triggered=self.on_file_save)
         self.action_save_as = QAction('Save &As...', self, shortcut='Ctrl+Shift+S', statusTip='Save File As...',
@@ -72,11 +73,14 @@ class NodeEditorWindow(QMainWindow):
                                    triggered=self.on_edit_undo)
         self.action_redo = QAction('&Redo', self, shortcut='Ctrl+Shift+Z', statusTip='Redo Last Operation',
                                    triggered=self.on_edit_redo)
-        self.action_cut = QAction('&Cut', self, shortcut='Ctrl+X', statusTip='Cut to clipboard', triggered=self.on_edit_cut)
-        self.action_copy = QAction('&Copy', self, shortcut='Ctrl+C', statusTip='Copy to clipboard', triggered=self.on_edit_copy)
+        self.action_cut = QAction('&Cut', self, shortcut='Ctrl+X', statusTip='Cut to clipboard',
+                                  triggered=self.on_edit_cut)
+        self.action_copy = QAction('&Copy', self, shortcut='Ctrl+C', statusTip='Copy to clipboard',
+                                   triggered=self.on_edit_copy)
         self.action_paste = QAction('&Paste', self, shortcut='Ctrl+V', statusTip='Paste from clipboard',
                                     triggered=self.on_edit_paste)
-        self.action_del = QAction('&Delete', self, shortcut='Del', statusTip='Delete Selected Items', triggered=self.on_edit_del)
+        self.action_del = QAction('&Delete', self, shortcut='Del', statusTip='Delete Selected Items',
+                                  triggered=self.on_edit_del)
 
     def set_title(self):
         title = 'Node Editor - '
@@ -91,7 +95,7 @@ class NodeEditorWindow(QMainWindow):
             event.ignore()
 
     def is_modified(self):
-        return self.get_current_node_editor_widget().scene.has_been_modified
+        return self.get_current_node_editor_widget().scene.is_modified()
 
     def maybe_save(self):
         if not self.is_modified():
@@ -112,8 +116,7 @@ class NodeEditorWindow(QMainWindow):
 
     def on_file_new(self):
         if self.maybe_save():
-            self.get_current_node_editor_widget().scene.clear()
-            self.filename = None
+            self.get_current_node_editor_widget().file_new()
             self.set_title()
 
     def get_current_node_editor_widget(self):
@@ -125,57 +128,73 @@ class NodeEditorWindow(QMainWindow):
             if not filename:
                 return
             if os.path.isfile(filename):
-                self.get_current_node_editor_widget().scene.load_from_file(filename)
-                self.filename = filename
-                self.set_title()
+                self.get_current_node_editor_widget().file_load(filename)
 
     def on_file_save(self):
-        if not self.filename:
-            return self.on_file_save_as()
-        self.get_current_node_editor_widget().scene.save_to_file(self.filename)
-        self.statusBar().showMessage('Successfully saved ' + self.filename)
-        return True
+        current_node_editor = self.get_current_node_editor_widget()
+        if current_node_editor is not None:
+            if not current_node_editor.is_filename_set():
+                return self.on_file_save_as()
+            current_node_editor.file_save()
+            self.statusBar().showMessage('Successfully saved ' + current_node_editor.filename, 5000)
+
+            if hasattr(current_node_editor, 'set_title'):
+                current_node_editor.set_title()
+            else:
+                self.set_title()
+            return True
 
     def on_file_save_as(self):
-        filename, file_filter = QFileDialog.getSaveFileName(self, 'Save graph form file')
-        if not filename:
-            return False
+        current_node_editor = self.get_current_node_editor_widget()
+        if current_node_editor is not None:
+            filename, file_filter = QFileDialog.getSaveFileName(self, 'Save graph form file')
+            if not filename:
+                return False
+            current_node_editor.file_save(filename)
+            self.statusBar().showMessage('Successfully saved ' + current_node_editor.filename, 5000)
 
-        self.filename = filename
-        self.on_file_save()
-        return True
+            if hasattr(current_node_editor, 'set_title'):
+                current_node_editor.set_title()
+            else:
+                self.set_title()
+            return True
 
     def on_edit_undo(self):
-        self.get_current_node_editor_widget().scene.history.undo()
+        if self.get_current_node_editor_widget():
+            self.get_current_node_editor_widget().scene.history.undo()
 
     def on_edit_redo(self):
-        self.get_current_node_editor_widget().scene.history.redo()
+        if self.get_current_node_editor_widget():
+            self.get_current_node_editor_widget().scene.history.redo()
 
     def on_edit_del(self):
-        self.get_current_node_editor_widget().scene.gr_scene.views()[0].delete_selected()
+        if self.get_current_node_editor_widget():
+            self.get_current_node_editor_widget().scene.gr_scene.views()[0].delete_selected()
 
     def on_edit_cut(self):
-        data = self.get_current_node_editor_widget().scene.clipboard.serialize_selected(delete=True)
-        str_data = json.dumps(data, indent=4)
-        QApplication.instance().clipboard().setText(str_data)
+        if self.get_current_node_editor_widget():
+            data = self.get_current_node_editor_widget().scene.clipboard.serialize_selected(delete=True)
+            str_data = json.dumps(data, indent=4)
+            QApplication.instance().clipboard().setText(str_data)
 
     def on_edit_copy(self):
-        data = self.get_current_node_editor_widget().scene.clipboard.serialize_selected(delete=False)
-        str_data = json.dumps(data, indent=4)
-        print(str_data)
-        QApplication.instance().clipboard().setText(str_data)
+        if self.get_current_node_editor_widget():
+            data = self.get_current_node_editor_widget().scene.clipboard.serialize_selected(delete=False)
+            str_data = json.dumps(data, indent=4)
+            QApplication.instance().clipboard().setText(str_data)
 
     def on_edit_paste(self):
-        raw_data = QApplication.instance().clipboard().text()
-        try:
-            data = json.loads(raw_data)
-        except ValueError as e:
-            return
+        if self.get_current_node_editor_widget():
+            raw_data = QApplication.instance().clipboard().text()
+            try:
+                data = json.loads(raw_data)
+            except ValueError as e:
+                return
 
-        if 'nodes' not in data:
-            return
+            if 'nodes' not in data:
+                return
 
-        self.get_current_node_editor_widget().scene.clipboard.deserialize_from_clipboard(data)
+            self.get_current_node_editor_widget().scene.clipboard.deserialize_from_clipboard(data)
 
     def read_settings(self):
         settings = QSettings(self.name_company, self.name_product)

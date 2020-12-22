@@ -35,7 +35,7 @@ class Socket(Serializable):
     def add_edge(self, edge):
         self.edges.append(edge)
 
-    def remove_edge(self,edge):
+    def remove_edge(self, edge):
         if edge in self.edges:
             self.edges.remove(edge)
 
@@ -59,9 +59,15 @@ class Socket(Serializable):
             ('socket_type', self.socket_type)
         ])
 
+    def determineMultiEdges(self, data):
+        if 'multi_edges' in data:
+            return data['multi_edges']
+        else:
+            return data['position'] in (RIGHT_BUTTON, RIGHT_TOP)
+
     def deserialize(self, data, hashmap=None, restore_id=True):
         if restore_id: self.id = data['id']
-        self.is_multi_edges = data['multi_edges']
+        self.is_multi_edges = self.determineMultiEdges(data)
         hashmap[data['id']] = self
 
         return True

@@ -209,8 +209,19 @@ class QDMGraphicsView(QGraphicsView):
 
         # if self.dragMode() == QGraphicsView.RubberBandDrag:
         if self.rubber_band_dragging_rectangle:
-            self.gr_scene.scene.history.store_history('Selection Changed')
             self.rubber_band_draggin_rectangle = False
+            # self.gr_scene.scene.history.store_history('Selection Changed')
+            current_selected_items = self.gr_scene.selectedItems()
+            if current_selected_items != self.gr_scene.scene._last_selected_items:
+                if not current_selected_items:
+                    self.gr_scene.item_deselected.emit()
+                else:
+                    self.gr_scene.item_selected.emit()
+                self.gr_scene.scene._last_selected_items = current_selected_items
+            return
+
+        if item is None:
+            self.gr_scene.item_deselected.emit()
 
         super(QDMGraphicsView, self).mouseReleaseEvent(event)
 

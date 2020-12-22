@@ -2,6 +2,7 @@
 # Time    : 2020/12/12 15:12
 # Author  : LiaoKong
 import json
+import os
 from collections import OrderedDict
 
 from node_editor.node_derializable import Serializable
@@ -20,11 +21,44 @@ class Scene(Serializable):
 
         self.scene_width, self.scene_height = 64000, 64000
         self._has_been_modified = False
+        self._last_selected_items = []
+
         self._has_been_modified_listeners = []
+        self._item_selected_listeners = []
+        self._item_deselected_listeners = []
 
         self.init_ui()
         self.history = SceneHistory(self)
         self.clipboard = SceneClipboard(self)
+
+        self.gr_scene.item_selected.connect(self.on_item_selected)
+        self.gr_scene.item_deselected.connect(self.on_item_deselected)
+
+    def on_item_selected(self):
+        print('SCENE: on item selected')
+        current_selected_items = self.get_selected_items()
+        if current_selected_items != self._last_selected_items:
+            self._last_selected_items = current_selected_items
+            self.history.store_history('Selection Changed')
+
+            for callback in self._item_selected_listeners:
+                callback()
+
+    def on_item_deselected(self):
+        print('SCENE: on item deselected')
+        self.reset_last_selected_states()
+        if self._last_selected_items:
+            self._last_selected_items = []
+            self.history.store_history('Deselected Everything')
+
+            for callback in self._item_deselected_listeners:
+                callback()
+
+    def is_modified(self):
+        return self.has_been_modified
+
+    def get_selected_items(self):
+        return self.gr_scene.selectedItems()
 
     @property
     def has_been_modified(self):
@@ -43,9 +77,21 @@ class Scene(Serializable):
     def add_has_been_modified_listeners(self, callback):
         self._has_been_modified_listeners.append(callback)
 
+    def add_item_selected_listener(self, callback):
+        self._item_selected_listeners.append(callback)
+
+    def add_item_deselected_listener(self, callback):
+        self._item_deselected_listeners.append(callback)
+
     def init_ui(self):
         self.gr_scene = QDMGraphicsScene(self)
         self.gr_scene.set_gr_scene(self.scene_width, self.scene_height)
+
+    def reset_last_selected_states(self):
+        for node in self.nodes:
+            node.gr_node._last_selected_state = False
+        for edge in self.edges:
+            edge.gr_edge._last_selected_state = False
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -75,10 +121,13 @@ class Scene(Serializable):
     def load_from_file(self, filename):
         with open(filename) as file:
             raw_data = file.read()
-            data = json.loads(raw_data, encoding='utf8')
+            try:
+                data = json.loads(raw_data, encoding='utf8')
 
-            self.deserialize(data)
-            self.has_been_modified = False
+                self.deserialize(data)
+                self.has_been_modified = False
+            except json.JSONDecodeError:
+                raise Exception('%s is not a valid JSON file' % os.path.basename(filename))
 
     def serialize(self):
         nodes, edges = [], []

@@ -10,26 +10,48 @@ class SceneHistory(object):
     def __init__(self, scene):
         self.scene = scene
 
+        self.clear()
+        self.history_limit = 32
+
+        self._history_modified_listeners = []
+
+    def clear(self):
         self.history_stack = []
         self.history_current_step = -1
-        self.history_limit = 8
+
+    def store_initial_history_stamp(self):
+        self.store_history('Initial History Stamp')
+
+    def can_undo(self):
+        return self.history_current_step > 0
+
+    def can_redo(self):
+        return self.history_current_step + 1 < len(self.history_stack)
 
     def undo(self):
         if DEBUG: print('UNDO')
-        if self.history_current_step > 0:
+        if self.can_undo():
             self.history_current_step -= 1
             self.restore_history()
+            self.scene.has_been_modified = True
 
     def redo(self):
         if DEBUG: print('REDO')
-        if self.history_current_step + 1 < len(self.history_stack):
+        if self.can_redo():
             self.history_current_step += 1
             self.restore_history()
+            self.scene.has_been_modified = True
+
+    def add_history_modified_listener(self, callback):
+        self._history_modified_listeners.append(callback)
 
     def restore_history(self):
         if DEBUG: print('restore_history... current_step:', self.history_current_step, len(self.history_stack))
 
         self.restore_history_stamp(self.history_stack[self.history_current_step])
+
+        for callback in self._history_modified_listeners:
+            callback()
 
     def store_history(self, desc, set_modified=False):
         if set_modified:
@@ -47,6 +69,9 @@ class SceneHistory(object):
         hs = self.create_history_stamp(desc)
         self.history_stack.append(hs)
         self.history_current_step += 1
+
+        for callback in self._history_modified_listeners:
+            callback()
 
     def create_history_stamp(self, desc):
         sel_obj = {

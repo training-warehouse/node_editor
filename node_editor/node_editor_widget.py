@@ -23,22 +23,64 @@ class NodeEditorWidget(QWidget):
         self.scene = Scene()
         # self.gr_scene = self.scene.gr_scene
 
-        self.add_nodes()
+        # self.add_nodes()
 
         self.view = QDMGraphicsView(self.scene.gr_scene, self)
         self.layout.addWidget(self.view)
 
         # self.add_debug_content()
 
+    def get_selected_items(self):
+        return self.scene.get_selected_items()
+
+    def has_selected_items(self):
+        return self.get_selected_items() != []
+
+    def can_undo(self):
+        return self.scene.history.can_undo()
+
+    def can_redo(self):
+        return self.scene.history.can_redo()
+
     def is_filename_set(self):
         return self.filename is not None
 
     def is_modified(self):
-        return self.scene.has_been_modified
+        return self.scene.is_modified()
 
     def get_user_friendly_filename(self):
         name = os.path.basename(self.filename) if self.is_filename_set() else 'New Graph'
         return name + ('*' if self.is_modified() else '')
+
+    def file_new(self):
+        self.scene.clear()
+        self.filename = None
+        self.scene.history.clear()
+        self.scene.history.store_initial_history_stamp()
+
+    def file_load(self, filename):
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self.scene.load_from_file(filename)
+            self.filename = filename
+            self.scene.history.clear()
+            self.scene.history.store_initial_history_stamp()
+
+            QApplication.restoreOverrideCursor()
+            return True
+        except Exception as e:
+            print(e)
+            QMessageBox.warning(self, 'Error loading %s' % os.path.basename(filename), str(e))
+            QApplication.restoreOverrideCursor()
+            return False
+
+    def file_save(self, filename=None):
+        if filename is not None:
+            self.filename = filename
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        self.scene.save_to_file(self.filename)
+        QApplication.restoreOverrideCursor()
+        return True
 
     def add_nodes(self):
         node1 = Node(self.scene, "My Awesome Node1", inputs=[1, 2, 3], outputs=[1])
@@ -50,6 +92,8 @@ class NodeEditorWidget(QWidget):
 
         edge1 = Edge(self.scene, node1.outputs[0], node2.inputs[0], EDGE_TYPE_BEZIER)
         edge2 = Edge(self.scene, node2.outputs[0], node3.inputs[0], EDGE_TYPE_BEZIER)
+
+        self.scene.history.store_initial_history_stamp()
 
     def add_debug_content(self):
         """绘制节点测试"""
